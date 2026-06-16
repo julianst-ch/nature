@@ -43,24 +43,22 @@
     <div id="nav-right" class="nav-zone"></div>
 
     <script>
-        // Set your RSS Feed URL here
         const RSS_URL = 'https://onetreeplanted.org/blogs/stories.atom'; 
         const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
-        let stories = [];
-        let currentIndex = 0;
-        let animationFrame;
-        const DURATION = 8000;
 
         async function fetchRSS() {
             try {
                 const response = await fetch(API_URL);
                 const data = await response.json();
                 
-                stories = data.items.map(item => {
-                    // 1. Try to find image in enclosure
-                    let imgUrl = item.enclosure ? item.enclosure.link : null;
+                const stories = data.items.map(item => {
+                    // DEBUG: If you don't see images, check the browser console!
+                    console.log("Processing item:", item);
+
+                    // 1. Try media:content (Atom format)
+                    let imgUrl = item.enclosure?.link || item.media?.content?.url || null;
                     
-                    // 2. If not, try finding it in the HTML description
+                    // 2. Fallback: Parse HTML description/content
                     if (!imgUrl) {
                         const div = document.createElement('div');
                         div.innerHTML = item.description || item.content || '';
@@ -68,17 +66,21 @@
                         imgUrl = img ? img.src : null;
                     }
 
-                    // 3. Apply Image Proxy (critical for blocking issues)
-                    const proxyUrl = imgUrl ? `https://images.weserv.nl/?url=${encodeURIComponent(imgUrl)}` : '';
+                    // 3. Fix relative URLs (if the image path starts with /)
+                    if (imgUrl && imgUrl.startsWith('/')) {
+                        imgUrl = 'https://onetreeplanted.org' + imgUrl;
+                    }
 
                     return {
                         title: item.title,
                         description: (item.description || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
                         link: item.link,
-                        image: proxyUrl
+                        image: imgUrl ? `https://images.weserv.nl/?url=${encodeURIComponent(imgUrl)}` : ''
                     };
                 }).slice(0, 5);
                 
+                // ... (rest of your showStory logic)
+                window.stories = stories;
                 initProgressBars();
                 showStory(0);
             } catch (e) {
@@ -86,55 +88,7 @@
             }
         }
 
-        function initProgressBars() {
-            const container = document.getElementById('progress-container');
-            stories.forEach((_, i) => {
-                const bar = document.createElement('div');
-                bar.className = 'progress-bar';
-                bar.innerHTML = `<div class="progress-fill" id="fill-${i}"></div>`;
-                container.appendChild(bar);
-            });
-        }
-
-        function showStory(index) {
-            cancelAnimationFrame(animationFrame);
-            currentIndex = index;
-            const story = stories[index];
-            
-            document.getElementById('title').innerText = story.title;
-            document.getElementById('description').innerText = story.description;
-            document.getElementById('read-btn').href = story.link;
-            
-            // Set Background
-            const container = document.getElementById('story-container');
-            if(story.image) {
-                container.style.backgroundImage = `linear-gradient(to top, rgba(0,0,0,0.95), transparent), url('${story.image}')`;
-            } else {
-                container.style.backgroundImage = 'none';
-            }
-            
-            document.querySelectorAll('.progress-fill').forEach((f, i) => {
-                f.style.width = i < index ? '100%' : '0%';
-            });
-            
-            let start = null;
-            function animate(timestamp) {
-                if (!start) start = timestamp;
-                const progress = Math.min((timestamp - start) / DURATION, 1) * 100;
-                document.getElementById(`fill-${index}`).style.width = `${progress}%`;
-                
-                if (progress < 100) {
-                    animationFrame = requestAnimationFrame(animate);
-                } else if (currentIndex < stories.length - 1) {
-                    showStory(currentIndex + 1);
-                }
-            }
-            animationFrame = requestAnimationFrame(animate);
-        }
-
-        document.getElementById('nav-left').onclick = () => { if(currentIndex > 0) showStory(currentIndex - 1); };
-        document.getElementById('nav-right').onclick = () => { if(currentIndex < stories.length - 1) showStory(currentIndex + 1); };
-
+        // Add the rest of your existing showStory, initProgressBars, etc., below here
         fetchRSS();
     </script>
 </body>
