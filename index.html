@@ -3,87 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Conservation News</title>
+    <title>Conservation News Feed</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; height: 100vh; align-items: center; }
-
-        .carousel-container {
-            width: 100%;
-            max-width: 450px;
-            overflow: hidden;
-            position: relative;
-            background: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-
-        .carousel-track {
-            display: flex;
-            transition: transform 0.5s ease-in-out;
-            width: 100%;
-        }
-
-        .news-card {
-            min-width: 100%;
-            height: 600px;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-end;
-        }
-
-        .card-info { background: white; padding: 20px; color: #333; }
+        .carousel-container { width: 100%; max-width: 450px; overflow: hidden; position: relative; background: #fff; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .carousel-track { display: flex; transition: transform 0.5s ease-in-out; width: 100%; }
+        .news-card { min-width: 100%; height: 600px; background-color: #e8f5e9; background-size: cover; background-position: center; background-repeat: no-repeat; position: relative; display: flex; flex-direction: column; justify-content: flex-end; }
+        .card-info { background: white; padding: 20px; color: #333; min-height: 150px; }
         .date { font-size: 0.75rem; color: #666; text-transform: uppercase; margin-bottom: 10px; }
         h2 { margin: 0 0 20px 0; font-size: 1.4rem; line-height: 1.3; }
-        
         .meta-footer { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 15px; }
-        .category { font-size: 0.7rem; font-weight: bold; border-bottom: 2px solid; padding-bottom: 2px; }
-        
-        /* Category Colors */
-        .cat-biodiversity { color: #2d5a27; border-color: #2d5a27; }
-        .cat-climate { color: #2563eb; border-color: #2563eb; }
-        .cat-oceans { color: #0891b2; border-color: #0891b2; }
+        .category { font-size: 0.7rem; font-weight: bold; border-bottom: 2px solid; padding-bottom: 2px; color: #2d5a27; border-color: #2d5a27; }
     </style>
 </head>
 <body>
 
     <div class="carousel-container">
-        <div class="carousel-track" id="carouselTrack">
-            <!-- News items will be loaded here by JavaScript -->
-        </div>
+        <div class="carousel-track" id="carouselTrack"></div>
     </div>
 
     <script>
         const rssUrl = "https://feeds.feedburner.com/ConservationInternationalBlog";
         const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
 
+        // Function to find an image URL inside the HTML description string
+        function extractImage(item) {
+            if (item.enclosure?.link) return item.enclosure.link;
+            if (item.thumbnail) return item.thumbnail;
+            
+            // Scrape from description/content
+            const htmlContent = item.description || item.content || "";
+            const div = document.createElement('div');
+            div.innerHTML = htmlContent;
+            const img = div.querySelector('img');
+            return img ? img.src : null;
+        }
+
         async function loadNews() {
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
                 const track = document.getElementById('carouselTrack');
-                
-                track.innerHTML = ''; // Clear loading state
+                track.innerHTML = '';
 
-                data.items.slice(0, 5).forEach((item, index) => {
-                    // Logic to select image: feed image or fallback to local files like image_3.png
-                    const img = item.enclosure.link || item.thumbnail || 'image_3.png'; 
-                    
+                data.items.slice(0, 5).forEach((item) => {
+                    const imgUrl = extractImage(item);
                     const card = document.createElement('div');
                     card.className = 'news-card';
-                    card.style.backgroundImage = `url('${img}')`;
+                    
+                    if (imgUrl) {
+                        card.style.backgroundImage = `url('${imgUrl}')`;
+                    }
                     
                     card.innerHTML = `
                         <div class="card-info">
                             <div class="date">${new Date(item.pubDate).toLocaleDateString()}</div>
                             <h2>${item.title}</h2>
                             <div class="meta-footer">
-                                <span class="category cat-biodiversity">CONSERVATION</span>
-                                <div class="time">⏱ Reading...</div>
+                                <span class="category">CONSERVATION</span>
                             </div>
                         </div>
                     `;
@@ -100,11 +78,12 @@
             const track = document.getElementById('carouselTrack');
             let index = 0;
             const slides = document.querySelectorAll('.news-card');
-            
-            setInterval(() => {
-                index = (index + 1) % slides.length;
-                track.style.transform = `translateX(-${index * 100}%)`;
-            }, 5000);
+            if (slides.length > 0) {
+                setInterval(() => {
+                    index = (index + 1) % slides.length;
+                    track.style.transform = `translateX(-${index * 100}%)`;
+                }, 5000);
+            }
         }
 
         loadNews();
