@@ -3,22 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>One Tree Planted Feed</title>
+    <title>Feed Viewer</title>
     <style>
-        :root { --economist-red: #e3120b; --background: #000; --text-white: #ffffff; }
+        :root { --accent: #e3120b; --background: #000; --text-white: #ffffff; }
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--background); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         
         #story-container { 
             width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; justify-content: flex-end; color: var(--text-white);
             background-size: cover; background-position: center; transition: background-image 0.5s ease;
-            background-color: var(--economist-red);
+            background-color: var(--accent);
         }
         
         #progress-container { position: absolute; top: 15px; left: 10px; right: 10px; display: flex; gap: 5px; z-index: 10; }
         .progress-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--text-white); width: 0%; }
 
-        #content-area { padding: 40px; padding-bottom: 100px; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); }
+        #content-area { padding: 40px; padding-bottom: 100px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
         h1 { font-size: 2rem; margin-bottom: 15px; line-height: 1.2; }
         p { font-size: 1.1rem; opacity: 0.9; line-height: 1.6; }
         #read-btn { display: inline-block; margin-top: 20px; padding: 12px 25px; border: 1px solid var(--text-white); color: var(--text-white); text-decoration: none; font-weight: bold; cursor: pointer; }
@@ -43,8 +43,8 @@
     <div id="nav-right" class="nav-zone"></div>
 
     <script>
-        // Updated to the One Tree Planted feed
-        const RSS_URL = 'https://onetreeplanted.org/blogs/stories.atom';
+        // Set your RSS Feed URL here
+        const RSS_URL = 'https://onetreeplanted.org/blogs/stories.atom'; 
         const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
         let stories = [];
         let currentIndex = 0;
@@ -57,29 +57,32 @@
                 const data = await response.json();
                 
                 stories = data.items.map(item => {
-                    const div = document.createElement('div');
-                    // Atom feeds sometimes store content in 'content' field instead of 'description'
-                    div.innerHTML = item.description || item.content;
-                    const img = div.querySelector('img');
+                    // 1. Try to find image in enclosure
+                    let imgUrl = item.enclosure ? item.enclosure.link : null;
                     
-                    // Proxy the image URL to prevent CORS blocking
-                    let imgUrl = '';
-                    if (img && img.src) {
-                        imgUrl = `https://images.weserv.nl/?url=${encodeURIComponent(img.src)}`;
+                    // 2. If not, try finding it in the HTML description
+                    if (!imgUrl) {
+                        const div = document.createElement('div');
+                        div.innerHTML = item.description || item.content || '';
+                        const img = div.querySelector('img');
+                        imgUrl = img ? img.src : null;
                     }
+
+                    // 3. Apply Image Proxy (critical for blocking issues)
+                    const proxyUrl = imgUrl ? `https://images.weserv.nl/?url=${encodeURIComponent(imgUrl)}` : '';
 
                     return {
                         title: item.title,
                         description: (item.description || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
                         link: item.link,
-                        image: imgUrl
+                        image: proxyUrl
                     };
                 }).slice(0, 5);
                 
                 initProgressBars();
                 showStory(0);
             } catch (e) {
-                document.getElementById('title').innerText = "Error loading data.";
+                document.getElementById('title').innerText = "Error: " + e.message;
             }
         }
 
