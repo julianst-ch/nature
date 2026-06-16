@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Economist Feed</title>
+    <title>One Tree Planted Feed</title>
     <style>
         :root { --economist-red: #e3120b; --background: #000; --text-white: #ffffff; }
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--background); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
@@ -43,7 +43,8 @@
     <div id="nav-right" class="nav-zone"></div>
 
     <script>
-        const RSS_URL = 'https://www.economist.com/business/rss.xml';
+        // Updated to the One Tree Planted feed
+        const RSS_URL = 'https://onetreeplanted.org/blogs/stories.atom';
         const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
         let stories = [];
         let currentIndex = 0;
@@ -57,10 +58,11 @@
                 
                 stories = data.items.map(item => {
                     const div = document.createElement('div');
-                    div.innerHTML = item.description;
+                    // Atom feeds sometimes store content in 'content' field instead of 'description'
+                    div.innerHTML = item.description || item.content;
                     const img = div.querySelector('img');
                     
-                    // Proxy the image URL if it exists
+                    // Proxy the image URL to prevent CORS blocking
                     let imgUrl = '';
                     if (img && img.src) {
                         imgUrl = `https://images.weserv.nl/?url=${encodeURIComponent(img.src)}`;
@@ -68,7 +70,7 @@
 
                     return {
                         title: item.title,
-                        description: item.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
+                        description: (item.description || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
                         link: item.link,
                         image: imgUrl
                     };
@@ -100,6 +102,7 @@
             document.getElementById('description').innerText = story.description;
             document.getElementById('read-btn').href = story.link;
             
+            // Set Background
             const container = document.getElementById('story-container');
             if(story.image) {
                 container.style.backgroundImage = `linear-gradient(to top, rgba(0,0,0,0.95), transparent), url('${story.image}')`;
