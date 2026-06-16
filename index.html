@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conservation News Feed</title>
+    <title>Live Conservation News</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; }
+        body { font-family: sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; height: 100vh; align-items: center; }
 
         .carousel-container {
             width: 100%;
@@ -29,95 +29,85 @@
             height: 600px;
             background-size: cover;
             background-position: center;
+            background-repeat: no-repeat;
             position: relative;
             display: flex;
             flex-direction: column;
-            justify-content: flex-end; /* Pushes content to bottom */
+            justify-content: flex-end;
         }
 
-        .card-info {
-            background: white;
-            padding: 20px;
-            color: #333;
-        }
-
-        .date { font-size: 0.75rem; color: #666; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .card-info { background: white; padding: 20px; color: #333; }
+        .date { font-size: 0.75rem; color: #666; text-transform: uppercase; margin-bottom: 10px; }
         h2 { margin: 0 0 20px 0; font-size: 1.4rem; line-height: 1.3; }
-
-        .meta-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #eee; padding-top: 15px; }
-        .categories { display: flex; gap: 10px; }
-
-        /* Specific colors for different categories */
+        
+        .meta-footer { display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 15px; }
         .category { font-size: 0.7rem; font-weight: bold; border-bottom: 2px solid; padding-bottom: 2px; }
+        
+        /* Category Colors */
         .cat-biodiversity { color: #2d5a27; border-color: #2d5a27; }
-        .cat-climate { color: #2563eb; border-color: #2563eb; } /* Blue */
-        .cat-oceans { color: #0891b2; border-color: #0891b2; } /* Teal */
-
-        .time { font-size: 0.8rem; color: #666; display: flex; align-items: center; }
+        .cat-climate { color: #2563eb; border-color: #2563eb; }
+        .cat-oceans { color: #0891b2; border-color: #0891b2; }
     </style>
 </head>
 <body>
 
     <div class="carousel-container">
         <div class="carousel-track" id="carouselTrack">
-            
-            <!-- Story 1 -->
-            <div class="news-card" style="background-image: url('image.png');">
-                <div class="card-info">
-                    <div class="date">June 16, 2026</div>
-                    <h2>Inside the ancient traditions saving nature's last strongholds</h2>
-                    <div class="meta-footer">
-                        <div class="categories">
-                            <span class="category cat-biodiversity">BIODIVERSITY</span>
-                            <span class="category cat-climate">CLIMATE</span>
-                        </div>
-                        <div class="time">⏱ 8 MIN</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Story 2 -->
-            <div class="news-card" style="background-image: url('image_2.png');">
-                <div class="card-info">
-                    <div class="date">June 9, 2026</div>
-                    <h2>The world just gained a marine protected area the size of France</h2>
-                    <div class="meta-footer">
-                        <div class="categories">
-                            <span class="category cat-oceans">OCEANS</span>
-                        </div>
-                        <div class="time">⏱ 5 MIN</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Story 3 -->
-            <div class="news-card" style="background-image: url('image_3.png');">
-                <div class="card-info">
-                    <div class="date">June 15, 2026</div>
-                    <h2>Next headline goes here</h2>
-                    <div class="meta-footer">
-                        <div class="categories">
-                            <span class="category cat-biodiversity">BIODIVERSITY</span>
-                        </div>
-                        <div class="time">⏱ 4 MIN</div>
-                    </div>
-                </div>
-            </div>
-
+            <!-- News items will be loaded here by JavaScript -->
         </div>
     </div>
 
     <script>
-        const track = document.getElementById('carouselTrack');
-        let index = 0;
-        const totalSlides = document.querySelectorAll('.news-card').length;
-        
-        function rotate() {
-            index = (index + 1) % totalSlides;
-            track.style.transform = `translateX(-${index * 100}%)`;
+        const rssUrl = "https://feeds.feedburner.com/ConservationInternationalBlog";
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+        async function loadNews() {
+            try {
+                const response = await fetch(apiUrl);
+                const data = await response.json();
+                const track = document.getElementById('carouselTrack');
+                
+                track.innerHTML = ''; // Clear loading state
+
+                data.items.slice(0, 5).forEach((item, index) => {
+                    // Logic to select image: feed image or fallback to local files like image_3.png
+                    const img = item.enclosure.link || item.thumbnail || 'image_3.png'; 
+                    
+                    const card = document.createElement('div');
+                    card.className = 'news-card';
+                    card.style.backgroundImage = `url('${img}')`;
+                    
+                    card.innerHTML = `
+                        <div class="card-info">
+                            <div class="date">${new Date(item.pubDate).toLocaleDateString()}</div>
+                            <h2>${item.title}</h2>
+                            <div class="meta-footer">
+                                <span class="category cat-biodiversity">CONSERVATION</span>
+                                <div class="time">⏱ Reading...</div>
+                            </div>
+                        </div>
+                    `;
+                    track.appendChild(card);
+                });
+                
+                startRotation();
+            } catch (err) {
+                console.error("Error loading feed:", err);
+            }
         }
-        
-        setInterval(rotate, 5000); 
+
+        function startRotation() {
+            const track = document.getElementById('carouselTrack');
+            let index = 0;
+            const slides = document.querySelectorAll('.news-card');
+            
+            setInterval(() => {
+                index = (index + 1) % slides.length;
+                track.style.transform = `translateX(-${index * 100}%)`;
+            }, 5000);
+        }
+
+        loadNews();
     </script>
 </body>
 </html>
