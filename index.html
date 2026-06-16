@@ -8,7 +8,7 @@
         * { box-sizing: border-box; }
         body { 
             font-family: 'Segoe UI', Roboto, sans-serif; 
-            background-color: #f7f5f2; /* Warm off-white */
+            background-color: #f7f5f2; 
             margin: 0; padding: 20px; 
             display: flex; justify-content: center; height: 100vh; align-items: center; 
         }
@@ -21,7 +21,7 @@
         
         .news-card { 
             min-width: 100%; height: 600px; 
-            background-color: #d1ccc0; /* Neutral warm fallback */
+            background-color: #d1ccc0; 
             background-size: cover; background-position: center; 
             position: relative; display: flex; flex-direction: column; justify-content: flex-end; 
         }
@@ -47,12 +47,15 @@
 <body>
 
     <div class="carousel-container">
-        <div class="carousel-track" id="carouselTrack"></div>
+        <div class="carousel-track" id="carouselTrack">
+            <p style="padding: 20px; text-align: center;">Loading feed...</p>
+        </div>
     </div>
 
     <script>
-        // Using the feed URL provided
         const feedUrl = "https://www.conservation.org/feed.json";
+        // Using AllOrigins proxy to bypass CORS restrictions
+        const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(feedUrl)}`;
 
         function getCategoryClass(category) {
             const name = category.toLowerCase();
@@ -66,28 +69,16 @@
 
         async function loadNews() {
             try {
-                // Fetching JSON Feed directly
-                const response = await fetch(feedUrl);
-                const data = await response.json();
+                const response = await fetch(proxyUrl);
+                const json = await response.json();
+                const data = JSON.parse(json.contents); // The proxy wraps the content
+                
                 const track = document.getElementById('carouselTrack');
                 track.innerHTML = '';
 
                 data.items.slice(0, 5).forEach((item) => {
-                    // 1. Try to find image in standard JSON Feed fields
-                    let imgUrl = item.image || item.banner_image || "";
-                    
-                    // 2. Fallback: If not found, scrape from content_html
-                    if (!imgUrl && item.content_html) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = item.content_html;
-                        const img = tempDiv.querySelector('img');
-                        imgUrl = img ? img.src : "";
-                    }
-
-                    // 3. Last Fallback: Unsplash nature image
-                    if (!imgUrl) {
-                        imgUrl = `https://source.unsplash.com/random/400x600/?nature,conservation&sig=${Math.random()}`;
-                    }
+                    // Try extracted image -> banner_image -> fallback
+                    let imgUrl = item.image || item.banner_image || `https://source.unsplash.com/random/400x600/?nature,conservation&sig=${Math.random()}`;
 
                     const wordCount = (item.content_text || "").split(/\s+/).length || 500;
                     const minutes = Math.ceil(wordCount / 200);
@@ -96,8 +87,7 @@
                     card.className = 'news-card';
                     card.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.1), rgba(0,0,0,0.1)), url('${imgUrl}')`;
                     
-                    // Simple categorization logic
-                    const category = item.tags && item.tags.length > 0 ? item.tags[0] : "Conservation";
+                    const category = (item.tags && item.tags.length > 0) ? item.tags[0] : "Conservation";
                     
                     card.innerHTML = `
                         <div class="card-info">
@@ -113,10 +103,12 @@
                     `;
                     track.appendChild(card);
                 });
+                
+                // Initialize Carousel
                 startRotation();
             } catch (err) { 
-                console.error("Error loading feed:", err);
-                document.getElementById('carouselTrack').innerHTML = '<p style="padding:20px;">Unable to load news feed. Check the URL.</p>';
+                console.error("Error:", err);
+                document.getElementById('carouselTrack').innerHTML = '<p style="padding:20px;">Could not load news. Please try again.</p>';
             }
         }
 
