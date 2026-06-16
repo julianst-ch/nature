@@ -3,93 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feed Viewer</title>
+    <title>Conservation International Feed</title>
+    <script src="https://cdn.jsdelivr.net/npm/rss-parser@3.13.0/dist/rss-parser.min.js"></script>
     <style>
-        :root { --accent: #e3120b; --background: #000; --text-white: #ffffff; }
-        body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--background); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-        
-        #story-container { 
-            width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; justify-content: flex-end; color: var(--text-white);
-            background-size: cover; background-position: center; transition: background-image 0.5s ease;
-            background-color: var(--accent);
-        }
-        
-        #progress-container { position: absolute; top: 15px; left: 10px; right: 10px; display: flex; gap: 5px; z-index: 10; }
-        .progress-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
-        .progress-fill { height: 100%; background: var(--text-white); width: 0%; }
-
-        #content-area { padding: 40px; padding-bottom: 100px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); }
-        h1 { font-size: 2rem; margin-bottom: 15px; line-height: 1.2; }
-        p { font-size: 1.1rem; opacity: 0.9; line-height: 1.6; }
-        #read-btn { display: inline-block; margin-top: 20px; padding: 12px 25px; border: 1px solid var(--text-white); color: var(--text-white); text-decoration: none; font-weight: bold; cursor: pointer; }
-        
-        .nav-zone { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 5; }
-        #nav-left { left: 0; cursor: w-resize; }
-        #nav-right { right: 0; cursor: e-resize; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        #app { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
+        .story-slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-size: cover; background-position: center; flex-direction: column; justify-content: flex-end; padding: 2rem; box-sizing: border-box; }
+        .story-slide.active { display: flex; }
+        .overlay { background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding: 2rem; color: white; }
+        h1 { font-size: 1.8rem; margin-bottom: 1rem; line-height: 1.2; }
+        p { font-size: 1rem; opacity: 0.9; margin-bottom: 2rem; }
+        .btn { display: inline-block; background: white; color: black; padding: 10px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; }
+        #progress-bar { position: absolute; top: 10px; left: 10px; right: 10px; height: 4px; background: rgba(255,255,255,0.3); display: flex; gap: 5px; }
+        .progress-segment { flex: 1; background: rgba(255,255,255,0.5); border-radius: 2px; }
+        .progress-segment.active { background: white; }
     </style>
 </head>
 <body>
 
-    <div id="progress-container"></div>
-    <div id="story-container">
-        <div id="content-area">
-            <h1 id="title">Loading...</h1>
-            <p id="description"></p>
-            <a id="read-btn" href="#" target="_blank">Read Full Article</a>
-        </div>
-    </div>
-
-    <div id="nav-left" class="nav-zone"></div>
-    <div id="nav-right" class="nav-zone"></div>
+    <div id="progress-bar"></div>
+    <div id="app"></div>
 
     <script>
-        const RSS_URL = 'https://onetreeplanted.org/blogs/stories.atom'; 
-        const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
+        const RSS_URL = 'https://feeds.feedburner.com/ConservationInternationalBlog';
+        // Using a CORS proxy to bypass the RSS-feed block
+        const PROXY = 'https://api.allorigins.win/get?url=';
+        const parser = new RSSParser();
+        const app = document.getElementById('app');
+        const progressBar = document.getElementById('progress-bar');
+        let items = [];
+        let currentIndex = 0;
 
-        async function fetchRSS() {
+        async function fetchFeed() {
             try {
-                const response = await fetch(API_URL);
+                const response = await fetch(PROXY + encodeURIComponent(RSS_URL));
                 const data = await response.json();
-                
-                const stories = data.items.map(item => {
-                    // DEBUG: If you don't see images, check the browser console!
-                    console.log("Processing item:", item);
-
-                    // 1. Try media:content (Atom format)
-                    let imgUrl = item.enclosure?.link || item.media?.content?.url || null;
-                    
-                    // 2. Fallback: Parse HTML description/content
-                    if (!imgUrl) {
-                        const div = document.createElement('div');
-                        div.innerHTML = item.description || item.content || '';
-                        const img = div.querySelector('img');
-                        imgUrl = img ? img.src : null;
-                    }
-
-                    // 3. Fix relative URLs (if the image path starts with /)
-                    if (imgUrl && imgUrl.startsWith('/')) {
-                        imgUrl = 'https://onetreeplanted.org' + imgUrl;
-                    }
-
-                    return {
-                        title: item.title,
-                        description: (item.description || item.content || '').replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
-                        link: item.link,
-                        image: imgUrl ? `https://images.weserv.nl/?url=${encodeURIComponent(imgUrl)}` : ''
-                    };
-                }).slice(0, 5);
-                
-                // ... (rest of your showStory logic)
-                window.stories = stories;
-                initProgressBars();
-                showStory(0);
-            } catch (e) {
-                document.getElementById('title').innerText = "Error: " + e.message;
+                const feed = await parser.parseString(data.contents);
+                items = feed.items.slice(0, 5); // Take the first 5 stories
+                render();
+            } catch (err) {
+                app.innerHTML = `<div style="color:white; padding:20px;">Error loading feed: ${err.message}</div>`;
             }
         }
 
-        // Add the rest of your existing showStory, initProgressBars, etc., below here
-        fetchRSS();
+        function render() {
+            items.forEach((item, index) => {
+                // Progress segments
+                const seg = document.createElement('div');
+                seg.className = 'progress-segment';
+                progressBar.appendChild(seg);
+
+                // Slides
+                const slide = document.createElement('div');
+                slide.className = 'story-slide';
+                // Using a fallback image if none provided
+                slide.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1542601906990-b4d3fb7780b9?auto=format&fit=crop&q=80&w=800')`;
+                slide.innerHTML = `
+                    <div class="overlay">
+                        <h1>${item.title}</h1>
+                        <p>${item.contentSnippet ? item.contentSnippet.substring(0, 100) + '...' : ''}</p>
+                        <a href="${item.link}" class="btn" target="_blank">Read Article</a>
+                    </div>
+                `;
+                app.appendChild(slide);
+            });
+            showSlide(0);
+        }
+
+        function showSlide(index) {
+            document.querySelectorAll('.story-slide').forEach((s, i) => {
+                s.classList.toggle('active', i === index);
+            });
+            document.querySelectorAll('.progress-segment').forEach((s, i) => {
+                s.classList.toggle('active', i === index);
+            });
+        }
+
+        app.addEventListener('click', () => {
+            currentIndex = (currentIndex + 1) % items.length;
+            showSlide(currentIndex);
+        });
+
+        fetchFeed();
     </script>
 </body>
 </html>
