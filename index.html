@@ -3,34 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Photography Stories</title>
+    <title>Photography Feed</title>
     <style>
-        :root { 
-            --economist-red: #e3120b; 
-            --background: #000; 
-            --text-white: #ffffff; 
-        }
-        
+        :root { --economist-red: #e3120b; --background: #000; --text-white: #ffffff; }
         body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--background); font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
         
         #story-container { 
             width: 100vw; height: 100vh; position: relative; display: flex; flex-direction: column; justify-content: flex-end; color: var(--text-white);
             background-size: cover; background-position: center; transition: background-image 0.5s ease;
-            background-color: var(--background);
+            background-color: var(--economist-red);
         }
         
-        /* Progress Bar */
         #progress-container { position: absolute; top: 15px; left: 10px; right: 10px; display: flex; gap: 5px; z-index: 10; }
         .progress-bar { flex: 1; height: 3px; background: rgba(255,255,255,0.3); border-radius: 2px; overflow: hidden; }
         .progress-fill { height: 100%; background: var(--text-white); width: 0%; }
 
-        /* Text Content */
         #content-area { padding: 40px; padding-bottom: 100px; background: linear-gradient(to top, rgba(0,0,0,0.95), transparent); }
-        h1 { font-size: 2.5rem; margin-bottom: 15px; line-height: 1.1; font-weight: bold; }
-        p { font-size: 1.2rem; opacity: 0.9; line-height: 1.5; }
-        
-        #read-btn { display: inline-block; margin-top: 20px; padding: 12px 25px; border: 1px solid var(--text-white); color: var(--text-white); text-decoration: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        #read-btn:hover { background: var(--text-white); color: #000; }
+        h1 { font-size: 2rem; margin-bottom: 15px; line-height: 1.2; }
+        p { font-size: 1.1rem; opacity: 0.9; line-height: 1.6; }
+        #read-btn { display: inline-block; margin-top: 20px; padding: 12px 25px; border: 1px solid var(--text-white); color: var(--text-white); text-decoration: none; font-weight: bold; cursor: pointer; }
         
         .nav-zone { position: absolute; top: 0; bottom: 0; width: 50%; z-index: 5; }
         #nav-left { left: 0; cursor: w-resize; }
@@ -42,9 +33,9 @@
     <div id="progress-container"></div>
     <div id="story-container">
         <div id="content-area">
-            <h1 id="title">Loading feed...</h1>
+            <h1 id="title">Loading...</h1>
             <p id="description"></p>
-            <a id="read-btn" href="#" target="_blank">Read Article</a>
+            <a id="read-btn" href="#" target="_blank">Read Full Article</a>
         </div>
     </div>
 
@@ -52,12 +43,13 @@
     <div id="nav-right" class="nav-zone"></div>
 
     <script>
+        // Updated URL
         const RSS_URL = 'http://www.lightandphoto.com/blog.rss';
         const API_URL = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(RSS_URL)}`;
         let stories = [];
         let currentIndex = 0;
         let animationFrame;
-        const DURATION = 8000; // 8 seconds per slide
+        const DURATION = 8000;
 
         async function fetchRSS() {
             try {
@@ -69,18 +61,24 @@
                     div.innerHTML = item.description;
                     const img = div.querySelector('img');
                     
+                    // Proxy the image URL to prevent blocking
+                    let imgUrl = '';
+                    if (img && img.src) {
+                        imgUrl = `https://images.weserv.nl/?url=${encodeURIComponent(img.src)}`;
+                    }
+
                     return {
                         title: item.title,
                         description: item.description.replace(/<[^>]*>?/gm, '').substring(0, 150) + "...",
                         link: item.link,
-                        image: img ? img.src : ''
+                        image: imgUrl
                     };
-                }).slice(0, 10); // Take first 10 articles
+                }).slice(0, 5);
                 
                 initProgressBars();
                 showStory(0);
             } catch (e) {
-                document.getElementById('title').innerText = "Error loading feed.";
+                document.getElementById('title').innerText = "Error loading data.";
             }
         }
 
@@ -103,9 +101,13 @@
             document.getElementById('description').innerText = story.description;
             document.getElementById('read-btn').href = story.link;
             
+            // Set Background
             const container = document.getElementById('story-container');
-            // Adding a dark gradient to ensure text remains readable over photography
-            container.style.backgroundImage = `linear-gradient(to top, rgba(0,0,0,0.9), transparent), url('${story.image}')`;
+            if(story.image) {
+                container.style.backgroundImage = `linear-gradient(to top, rgba(0,0,0,0.95), transparent), url('${story.image}')`;
+            } else {
+                container.style.backgroundImage = 'none';
+            }
             
             document.querySelectorAll('.progress-fill').forEach((f, i) => {
                 f.style.width = i < index ? '100%' : '0%';
