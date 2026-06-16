@@ -3,88 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Conservation International Feed</title>
-    <script src="https://cdn.jsdelivr.net/npm/rss-parser@3.13.0/dist/rss-parser.min.js"></script>
+    <title>Conservation News Feed</title>
     <style>
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #app { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; position: relative; }
-        .story-slide { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: none; background-size: cover; background-position: center; flex-direction: column; justify-content: flex-end; padding: 2rem; box-sizing: border-box; }
-        .story-slide.active { display: flex; }
-        .overlay { background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); padding: 2rem; color: white; }
-        h1 { font-size: 1.8rem; margin-bottom: 1rem; line-height: 1.2; }
-        p { font-size: 1rem; opacity: 0.9; margin-bottom: 2rem; }
-        .btn { display: inline-block; background: white; color: black; padding: 10px 20px; border-radius: 20px; text-decoration: none; font-weight: bold; }
-        #progress-bar { position: absolute; top: 10px; left: 10px; right: 10px; height: 4px; background: rgba(255,255,255,0.3); display: flex; gap: 5px; }
-        .progress-segment { flex: 1; background: rgba(255,255,255,0.5); border-radius: 2px; }
-        .progress-segment.active { background: white; }
+        * { box-sizing: border-box; }
+        body { font-family: sans-serif; background-color: #f0f0f0; margin: 0; padding: 20px; display: flex; justify-content: center; }
+
+        .carousel-container {
+            width: 100%;
+            max-width: 400px; /* Adjust based on mobile vs desktop preference */
+            overflow: hidden;
+            position: relative;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .carousel-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+
+        .news-card {
+            min-width: 100%;
+            height: 500px;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+        }
+
+        /* Card Backgrounds */
+        .card-1 { background-image: url('image.png'); }
+        .card-2 { background-image: url('image_2.png'); }
+
+        .card-info {
+            background: white;
+            padding: 20px;
+            color: #333;
+        }
+
+        .date {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 0.5px;
+        }
+
+        h2 {
+            margin: 0 0 20px 0;
+            font-size: 1.4rem;
+            line-height: 1.3;
+        }
+
+        .meta-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+        }
+
+        .categories {
+            display: flex;
+            gap: 10px;
+        }
+
+        .category {
+            font-size: 0.7rem;
+            font-weight: bold;
+            border-bottom: 2px solid #2d5a27;
+            padding-bottom: 2px;
+            color: #2d5a27;
+        }
+
+        .time {
+            font-size: 0.8rem;
+            color: #666;
+            display: flex;
+            align-items: center;
+        }
     </style>
 </head>
 <body>
 
-    <div id="progress-bar"></div>
-    <div id="app"></div>
+    <div class="carousel-container">
+        <div class="carousel-track" id="carouselTrack">
+            
+            <!-- Story 1: Uses image.png -->
+            <div class="news-card card-1">
+                <div class="card-info">
+                    <div class="date">June 16, 2026</div>
+                    <h2>Inside the ancient traditions saving nature's last strongholds</h2>
+                    <div class="meta-footer">
+                        <div class="categories">
+                            <span class="category">BIODIVERSITY</span>
+                            <span class="category">CLIMATE</span>
+                        </div>
+                        <div class="time">⏱ 8 MIN</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Story 2: Uses image_2.png -->
+            <div class="news-card card-2">
+                <div class="card-info">
+                    <div class="date">June 9, 2026</div>
+                    <h2>The world just gained a marine protected area the size of France</h2>
+                    <div class="meta-footer">
+                        <div class="categories">
+                            <span class="category">OCEANS</span>
+                        </div>
+                        <div class="time">⏱ 5 MIN</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
     <script>
-        const RSS_URL = 'https://feeds.feedburner.com/ConservationInternationalBlog';
-        // Using a CORS proxy to bypass the RSS-feed block
-        const PROXY = 'https://api.allorigins.win/get?url=';
-        const parser = new RSSParser();
-        const app = document.getElementById('app');
-        const progressBar = document.getElementById('progress-bar');
-        let items = [];
-        let currentIndex = 0;
-
-        async function fetchFeed() {
-            try {
-                const response = await fetch(PROXY + encodeURIComponent(RSS_URL));
-                const data = await response.json();
-                const feed = await parser.parseString(data.contents);
-                items = feed.items.slice(0, 5); // Take the first 5 stories
-                render();
-            } catch (err) {
-                app.innerHTML = `<div style="color:white; padding:20px;">Error loading feed: ${err.message}</div>`;
-            }
+        const track = document.getElementById('carouselTrack');
+        let index = 0;
+        
+        function rotate() {
+            index = (index + 1) % 2; // Assuming 2 cards
+            track.style.transform = `translateX(-${index * 100}%)`;
         }
-
-        function render() {
-            items.forEach((item, index) => {
-                // Progress segments
-                const seg = document.createElement('div');
-                seg.className = 'progress-segment';
-                progressBar.appendChild(seg);
-
-                // Slides
-                const slide = document.createElement('div');
-                slide.className = 'story-slide';
-                // Using a fallback image if none provided
-                slide.style.backgroundImage = `linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('https://images.unsplash.com/photo-1542601906990-b4d3fb7780b9?auto=format&fit=crop&q=80&w=800')`;
-                slide.innerHTML = `
-                    <div class="overlay">
-                        <h1>${item.title}</h1>
-                        <p>${item.contentSnippet ? item.contentSnippet.substring(0, 100) + '...' : ''}</p>
-                        <a href="${item.link}" class="btn" target="_blank">Read Article</a>
-                    </div>
-                `;
-                app.appendChild(slide);
-            });
-            showSlide(0);
-        }
-
-        function showSlide(index) {
-            document.querySelectorAll('.story-slide').forEach((s, i) => {
-                s.classList.toggle('active', i === index);
-            });
-            document.querySelectorAll('.progress-segment').forEach((s, i) => {
-                s.classList.toggle('active', i === index);
-            });
-        }
-
-        app.addEventListener('click', () => {
-            currentIndex = (currentIndex + 1) % items.length;
-            showSlide(currentIndex);
-        });
-
-        fetchFeed();
+        
+        setInterval(rotate, 5000); // Auto-rotate every 5 seconds
     </script>
 </body>
 </html>
